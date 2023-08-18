@@ -12,6 +12,7 @@ from train.training_loop import TrainLoop
 from data_loaders.get_data import get_dataset_loader
 from utils.model_util import create_model_and_diffusion
 from train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
+import logging
 
 def main():
     args = train_args()
@@ -30,18 +31,23 @@ def main():
     with open(args_path, 'w') as fw:
         json.dump(vars(args), fw, indent=4, sort_keys=True)
 
+    logging.basicConfig(filename= f'{args.save_dir}/train.log', level=logging.DEBUG,
+                        format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
+    logging.info('start logging')
+
+
     dist_util.setup_dist(args.device)
 
-    print("creating data loader...")
+    logging.info("creating data loader...")
     data = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=args.num_frames)
 
-    print("creating model and diffusion...")
+    logging.info("creating model and diffusion...")
     model, diffusion = create_model_and_diffusion(args, data)
     model.to(dist_util.dev())
     model.rot2xyz.smpl_model.eval()
 
-    print('Total params: %.2fM' % (sum(p.numel() for p in model.parameters_wo_clip()) / 1000000.0))
-    print("Training...")
+    logging.info('Total params: %.2fM' % (sum(p.numel() for p in model.parameters_wo_clip()) / 1000000.0))
+    logging.info("Training...")
     TrainLoop(args, train_platform, model, diffusion, data).run_loop()
     train_platform.close()
 

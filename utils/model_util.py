@@ -1,6 +1,6 @@
 from model.mdm import MDM
 from diffusion import gaussian_diffusion as gd
-from diffusion.respace import SpacedDiffusion, space_timesteps
+from diffusion.respace import SpacedDiffusion, DependentSpacedDiffusion, space_timesteps
 from utils.parser_util import get_cond_mode
 
 
@@ -64,24 +64,49 @@ def create_gaussian_diffusion(args):
     if not timestep_respacing:
         timestep_respacing = [steps]
 
-    return SpacedDiffusion(
-        use_timesteps=space_timesteps(steps, timestep_respacing),
-        betas=betas,
-        model_mean_type=(
-            gd.ModelMeanType.EPSILON if not predict_xstart else gd.ModelMeanType.START_X
-        ),
-        model_var_type=(
-            (
-                gd.ModelVarType.FIXED_LARGE
-                if not args.sigma_small
-                else gd.ModelVarType.FIXED_SMALL
-            )
-            if not learn_sigma
-            else gd.ModelVarType.LEARNED_RANGE
-        ),
-        loss_type=loss_type,
-        rescale_timesteps=rescale_timesteps,
-        lambda_vel=args.lambda_vel,
-        lambda_rcxyz=args.lambda_rcxyz,
-        lambda_fc=args.lambda_fc,
-    )
+    if not args.dependent:
+        return SpacedDiffusion(
+            use_timesteps=space_timesteps(steps, timestep_respacing),
+            betas=betas,
+            model_mean_type=(
+                gd.ModelMeanType.EPSILON if not predict_xstart else gd.ModelMeanType.START_X
+            ),
+            model_var_type=(
+                (
+                    gd.ModelVarType.FIXED_LARGE
+                    if not args.sigma_small
+                    else gd.ModelVarType.FIXED_SMALL
+                )
+                if not learn_sigma
+                else gd.ModelVarType.LEARNED_RANGE
+            ),
+            loss_type=loss_type,
+            rescale_timesteps=rescale_timesteps,
+            lambda_vel=args.lambda_vel,
+            lambda_rcxyz=args.lambda_rcxyz,
+            lambda_fc=args.lambda_fc,
+        )
+    else:
+        return DependentSpacedDiffusion(
+            use_timesteps=space_timesteps(steps, timestep_respacing),
+            betas=betas,
+            model_mean_type=(
+                gd.ModelMeanType.EPSILON if not predict_xstart else gd.ModelMeanType.START_X
+            ),
+            model_var_type=(
+                (
+                    gd.ModelVarType.FIXED_LARGE
+                    if not args.sigma_small
+                    else gd.ModelVarType.FIXED_SMALL
+                )
+                if not learn_sigma
+                else gd.ModelVarType.LEARNED_RANGE
+            ),
+            loss_type=loss_type,
+            rescale_timesteps=rescale_timesteps,
+            lambda_vel=args.lambda_vel,
+            lambda_rcxyz=args.lambda_rcxyz,
+            lambda_fc=args.lambda_fc,
+            num_frames=args.num_frames,
+            decay_rate=args.decay_rate,
+        )

@@ -70,6 +70,9 @@ def add_diffusion_options(parser):
     group.add_argument("--diffusion_steps", default=1000, type=int,
                        help="Number of diffusion steps (denoted T in the paper)")
     group.add_argument("--sigma_small", default=True, type=bool, help="Use smaller sigma values.")
+    group.add_argument("--dependent", default=False, action="store_true")
+    group.add_argument("--ar_sample", default=False, action="store_true")
+    group.add_argument("--decay_rate", default=0.1, type=float)
 
 
 def add_model_options(parser):
