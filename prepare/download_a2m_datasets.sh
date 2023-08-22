@@ -13,7 +13,7 @@ rm HumanAct12Poses.tar.gz
 
 # Donwload UESTC poses estimated with VIBE
 echo "Downloading the UESTC poses estimated with VIBE"
-gdown "https://drive.google.com/uc?id=1LE-EmYNzECU8o7A2DmqDKtqDMucnSJsy"
+gdown "https://drive.google.com/uc?id=1LE-EmYNzECU8o7A2DmqDKtqDMucnSJsy&confirm=t"
 echo "Extracting the UESTC poses estimated with VIBE"
 tar xjvf uestc.tar.bz2
 echo "Cleaning\n"

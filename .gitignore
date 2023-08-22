@@ -131,3 +131,6 @@ assets/
 dataset/
 save/
 body_models/
+glove/
+t2m/
+kit/

@@ -13,8 +13,11 @@ from data_loaders.get_data import get_dataset_loader
 from utils.model_util import create_model_and_diffusion
 from train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
 import logging
+import torch
 
 def main():
+    os.environ["OMP_NUM_THREADS"] = "10"
+    torch.set_num_threads(10)
     args = train_args()
     fixseed(args.seed)
     train_platform_type = eval(args.train_platform_type)

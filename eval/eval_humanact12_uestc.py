@@ -6,6 +6,8 @@ import os
 import torch
 import re
 
+os.environ["OMP_NUM_THREADS"] = "10"
+
 from utils import dist_util
 from model.cfg_sampler import ClassifierFreeSampleModel
 from data_loaders.get_data import get_dataset_loader
@@ -52,6 +54,11 @@ def main():
     args = evaluation_parser()
     fixseed(args.seed)
     dist_util.setup_dist(args.device)
+
+    print('hi')
+
+    os.environ["OMP_NUM_THREADS"] = "10"
+    torch.set_num_threads(10)
 
     print(f'Eval mode [{args.eval_mode}]')
     assert args.eval_mode in ['debug', 'full'], f'eval_mode {args.eval_mode} is not supported for dataset {args.dataset}'

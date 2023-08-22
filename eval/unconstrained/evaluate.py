@@ -13,6 +13,7 @@ from eval.a2m.action2motion.fid import calculate_fid
 from eval.a2m.action2motion.diversity import calculate_diversity
 from eval.unconstrained.metrics.kid import calculate_kid
 from eval.unconstrained.metrics.precision_recall import precision_and_recall
+from eval.unconstrained.metrics.temporal_consistency import temporal_consistency_metric
 from matplotlib import pyplot as plt
 
 TEST = False
@@ -56,7 +57,7 @@ def compute_features(model, iterator, device):
 
 def evaluate_unconstrained_metrics(generated_motions, device, fast):
 
-    act_rec_model_path = './assets/actionrecognition/humanact12_gru_modi_struct.pth.tar'
+    act_rec_model_path = './assets/actionrecognition/humanact12_recognition_gru_modi_struct.pth.tar'
     dataset_path = './dataset/HumanAct12Poses/humanact12_unconstrained_modi_struct.npy'
 
     # initialize model
@@ -65,6 +66,9 @@ def evaluate_unconstrained_metrics(generated_motions, device, fast):
     generated_motions -= generated_motions[:, 8:9, :, :]  # locate root joint of all frames at origin
 
     iterator_generated = DataLoader(generated_motions, batch_size=64, shuffle=False, num_workers=8)
+
+    # compute tcm
+    tcm = temporal_consistency_metric(iterator_generated)
 
     # compute features of generated motions
     generated_features, generated_predictions = compute_features(act_rec_model, iterator_generated, device=device)
@@ -106,6 +110,6 @@ def evaluate_unconstrained_metrics(generated_motions, device, fast):
         print(f"recall: {recall}\n")
 
     metrics = {'fid': fid, 'kid': kid[0], 'diversity_gen': generated_diversity.cpu().item(), 'diversity_gt':  dataset_diversity.cpu().item(),
-                 'precision': precision, 'recall':recall}
+                 'precision': precision, 'recall':recall, 'tcm':tcm}
     return metrics
 

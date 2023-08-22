@@ -117,7 +117,7 @@ def evaluate(args, model, diffusion, data):
                 motion = motion['output_xyz'][:, idx, :, :]
                 generated_motions.append(motion.cpu().numpy())
             generated_motions = np.concatenate(generated_motions)
-            unconstrained_metrics = evaluate_unconstrained_metrics(generated_motions, device, fast=True)
+            unconstrained_metrics = evaluate_unconstrained_metrics(generated_motions, device, fast=False)
             unconstrained_metrics = {k+'_unconstrained': v for k, v in unconstrained_metrics.items()}
 
     except KeyboardInterrupt:

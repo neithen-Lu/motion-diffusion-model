@@ -35,6 +35,8 @@ def parse_and_load_from_model(parser):
 
     if args.cond_mask_prob == 0:
         args.guidance_param = 1
+
+    args.num_frames = 60
     return args
 
 
@@ -202,6 +204,7 @@ def add_evaluation_options(parser):
                             "full (a2m only) - 20 repetitions.")
     group.add_argument("--guidance_param", default=2.5, type=float,
                        help="For classifier-free sampling - specifies the s parameter, as defined in the paper.")
+
 
 
 def get_cond_mode(args):
