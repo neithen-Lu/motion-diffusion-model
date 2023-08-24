@@ -109,4 +109,7 @@ def create_gaussian_diffusion(args):
             lambda_fc=args.lambda_fc,
             num_frames=args.num_frames,
             decay_rate=args.decay_rate,
+            window_size=args.window_size,
+            ar_sample=args.ar_sample,
+            ar_coeff=args.ar_coeff
         )

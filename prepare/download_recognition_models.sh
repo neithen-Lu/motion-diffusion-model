@@ -6,7 +6,7 @@ wget https://raw.githubusercontent.com/EricGuo5513/action-to-motion/master/model
 echo -e
 
 echo -e "Downloading the UESTC action recognition model"
-gdown "https://drive.google.com/uc?id=1bSSD69s1dHY7Uk0RGbGc6p7uhUxSDSBK"
+gdown "https://drive.google.com/uc?id=1bSSD69s1dHY7Uk0RGbGc6p7uhUxSDSBK&confirm=t"
 echo -e
 
 echo -e "Downloading done!"

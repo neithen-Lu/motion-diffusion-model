@@ -36,7 +36,10 @@ def parse_and_load_from_model(parser):
     if args.cond_mask_prob == 0:
         args.guidance_param = 1
 
-    args.num_frames = 60
+    if args.dataset in ['humanact12','uestc']:
+        args.num_frames = 60
+    if args.dataset == 'humanml':
+        args.num_frames = 196
     return args
 
 
@@ -75,6 +78,8 @@ def add_diffusion_options(parser):
     group.add_argument("--dependent", default=False, action="store_true")
     group.add_argument("--ar_sample", default=False, action="store_true")
     group.add_argument("--decay_rate", default=0.1, type=float)
+    group.add_argument("--window_size", default=60, type=int)
+    group.add_argument("--ar_coeff", default=0.1, type=int)
 
 
 def add_model_options(parser):
