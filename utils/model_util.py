@@ -111,5 +111,6 @@ def create_gaussian_diffusion(args):
             decay_rate=args.decay_rate,
             window_size=args.window_size,
             ar_sample=args.ar_sample,
-            ar_coeff=args.ar_coeff
+            ar_coeff=args.ar_coeff,
+            loss_sig=args.loss_sig
         )

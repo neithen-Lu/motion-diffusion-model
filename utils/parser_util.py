@@ -80,6 +80,7 @@ def add_diffusion_options(parser):
     group.add_argument("--decay_rate", default=0.1, type=float)
     group.add_argument("--window_size", default=60, type=int)
     group.add_argument("--ar_coeff", default=0.1, type=int)
+    group.add_argument("--loss_sig", default=False, action="store_true")
 
 
 def add_model_options(parser):

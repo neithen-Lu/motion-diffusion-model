@@ -29,6 +29,11 @@ def construct_cov_mat(num_frames,decay_rate):
     seq = torch.pow(decay_rate,torch.arange(num_frames))
     return toeplitz(seq,seq)
 
+def construct_ar_cov_mat(window_size,decay_rate,ar_coeff,num_window):
+    seq = torch.pow(decay_rate,torch.arange(window_size))
+    seq_c = torch.pow(torch.sqrt(torch.tensor(ar_coeff)),torch.arange(num_window))
+    return torch.kron(toeplitz(seq_c,seq_c),toeplitz(seq,seq))
+
 
 class DependentGaussianDiffusion(GaussianDiffusion):
     """
@@ -68,7 +73,8 @@ class DependentGaussianDiffusion(GaussianDiffusion):
         decay_rate=0.1,
         window_size=60,
         ar_sample=False,
-        ar_coeff=0.1
+        ar_coeff=0.1,
+        loss_sig=False
     ):
         self.model_mean_type = model_mean_type
         self.model_var_type = model_var_type
@@ -136,12 +142,48 @@ class DependentGaussianDiffusion(GaussianDiffusion):
 
         #------------------- new ----------------
         self.cov_mat = construct_cov_mat(window_size,decay_rate)
+        self.cov_mat_inv = torch.inverse(self.cov_mat)
         # self.inv_cov_mat = torch.inverse(self.cov_mat)
         self.sampler = torch.distributions.multivariate_normal.MultivariateNormal(loc=torch.zeros(window_size),covariance_matrix=self.cov_mat)
         self.window_size = window_size
         self.window_num = int(num_frames / window_size)
         self.ar_sample = ar_sample
         self.ar_coeff = ar_coeff
+        self.loss_sig = loss_sig
+        if ar_sample and loss_sig:
+            self.ar_cov_mat = construct_ar_cov_mat(window_size,decay_rate,ar_coeff,self.window_num)
+            self.ar_cov_mat_inv = torch.inverse(self.ar_cov_mat)
+
+    def quadratic_l2(self,a,b,mask):
+        B,W,H,L = a.shape
+        x = ((a-b)* mask.float()).view((B,W*H,L)) 
+        loss = 0
+        if self.ar_sample:
+            loss = torch.matmul(torch.matmul(x,self.ar_cov_mat_inv.cuda()),x.permute((0,2,1)))
+        else:
+            for i in range(self.window_num):
+                loss += torch.matmul(torch.matmul(x[:,:,i*self.window_size:(i+1)*self.window_size],self.cov_mat_inv.cuda()),x[:,:,i*self.window_size:(i+1)*self.window_size].permute((0,2,1)))
+        
+        return loss
+
+
+    def masked_l2(self, a, b, mask):
+        # assuming a.shape == b.shape == bs, J, Jdim, seqlen
+        # assuming mask.shape == bs, 1, 1, seqlen
+        if self.loss_sig:
+            loss = self.quadratic_l2(a,b,mask)
+            loss = sum_flat(loss)
+        else:
+            loss = self.l2_loss(a, b)
+            loss = sum_flat(loss * mask.float())  # gives \sigma_euclidean over unmasked elements
+        n_entries = a.shape[1] * a.shape[2]
+        non_zero_elements = sum_flat(mask) * n_entries
+        # print('mask', mask.shape)
+        # print('non_zero_elements', non_zero_elements)
+        # print('loss', loss)
+        mse_loss_val = loss / non_zero_elements
+        # print('mse_loss_val', mse_loss_val)
+        return mse_loss_val
 
     def q_sample(self, x_start, t, noise=None):
         """
@@ -159,9 +201,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                 noise = torch.zeros(x_start.shape)
                 for i in range(self.window_num):
                     if i == 0:
-                        noise[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x_start.shape[:3])
+                        noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x_start.shape[:3])
                     else:
-                        noise[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x_start.shape[:3])
+                        noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x_start.shape[:3])
             else:
                 noise = torch.cat([self.sampler.sample(x_start.shape[:3]) for i in range(self.window_num)],axis=-1).to(x_start.device)
         assert noise.shape == x_start.shape
@@ -211,9 +253,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
             noise = torch.zeros(x.shape)
             for i in range(self.window_num):
                 if i == 0:
-                    noise[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
+                    noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                 else:
-                    noise[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+                    noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
         else:
             noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
         # print('const_noise', const_noise)
@@ -274,9 +316,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                 noise = torch.zeros(x.shape)
                 for i in range(self.window_num):
                     if i == 0:
-                        noise[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
+                        noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                     else:
-                        noise[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+                        noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
             else:
                 noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
             nonzero_mask = (
@@ -389,9 +431,10 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                 img = torch.zeros(shape)
                 for i in range(self.window_num):
                     if i == 0:
-                        img[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
+                        print(self.sampler.sample(shape[:3]).shape,self.window_size)
+                        img[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
                     else:
-                        img[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
+                        img[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
             else:
                 img = torch.cat([self.sampler.sample(shape[:3]) for i in range(self.window_num)],axis=-1).to(device)
 
@@ -476,9 +519,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
             noise = torch.zeros(x.shape)
             for i in range(self.window_num):
                 if i == 0:
-                    noise[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
+                    noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                 else:
-                    noise[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+                    noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
         else:
             noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
         mean_pred = (
@@ -541,9 +584,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
             noise = torch.zeros(x.shape)
             for i in range(self.window_num):
                 if i == 0:
-                    noise[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
+                    noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                 else:
-                    noise[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+                    noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
         else:
             noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
         mean_pred = (
@@ -676,9 +719,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                 img = torch.zeros(shape)
                 for i in range(self.window_num):
                     if i == 0:
-                        img[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
+                        img[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
                     else:
-                        img[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
+                        img[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
             else:
                 img = torch.cat([self.sampler.sample(shape[:3]) for i in range(self.window_num)],axis=-1).to(device)
 
@@ -877,9 +920,9 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                 img = torch.zeros(shape)
                 for i in range(self.window_num):
                     if i == 0:
-                        img[:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
+                        img[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
                     else:
-                        img[:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
+                        img[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
             else:
                 img = torch.cat([self.sampler.sample(shape[:3]) for i in range(self.window_num)],axis=-1).to(device)
 

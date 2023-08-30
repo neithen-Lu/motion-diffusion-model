@@ -110,7 +110,7 @@ class TrainLoop:
             self.model.load_state_dict(
                 dist_util.load_state_dict(
                     resume_checkpoint, map_location=dist_util.dev()
-                )
+                ),strict=False
             )
 
     def _load_optimizer_state(self):
@@ -167,8 +167,8 @@ class TrainLoop:
     def evaluate(self):
         if not self.args.eval_during_training:
             return
-        if self.step < 300000:
-            return
+        # if self.step < 300000:
+        #     return
         start_eval = time.time()
         if self.eval_wrapper is not None:
             logging.info('Running evaluation loop: [Should take about 90 min]')
