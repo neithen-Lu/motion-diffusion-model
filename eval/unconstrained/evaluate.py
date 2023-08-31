@@ -110,6 +110,6 @@ def evaluate_unconstrained_metrics(generated_motions, device, fast):
         print(f"recall: {recall}\n")
 
     metrics = {'fid': fid, 'kid': kid[0], 'diversity_gen': generated_diversity.cpu().item(), 'diversity_gt':  dataset_diversity.cpu().item(),
-                 'precision': precision, 'recall':recall, 'tcm':tcm}
+                 'precision': precision, 'recall':recall,'tcm':tcm}
     return metrics
 
