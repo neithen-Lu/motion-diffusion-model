@@ -4,6 +4,7 @@ from .models import load_classifier, load_classifier_for_fid
 from .accuracy import calculate_accuracy
 from .fid import calculate_fid
 from .diversity import calculate_diversity_multimodality
+from .temporal_consistency import temporal_consistency_metric
 
 
 class A2MEvaluation:
@@ -46,6 +47,14 @@ class A2MEvaluation:
         metrics = {}
         
         computedfeats = {}
+
+        # compute tcm
+        for key, loader in loaders.items():
+            metric = "tcm"
+            print_logs(metric, key)
+            mkey = f"{metric}_{key}"
+            metrics[mkey] = temporal_consistency_metric(loader)
+
         for key, loader in loaders.items():
             metric = "accuracy"
             print_logs(metric, key)
