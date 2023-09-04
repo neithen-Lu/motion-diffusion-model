@@ -3,6 +3,7 @@ import numpy as np
 from .accuracy import calculate_accuracy
 from .fid import calculate_fid
 from .diversity import calculate_diversity_multimodality
+from .temporal_consistency import temporal_consistency_metric
 
 from eval.a2m.recognition.models.stgcn import STGCN
 
@@ -61,6 +62,16 @@ class Evaluation:
         for sets in ["train", "test"]:
             computedfeats = {}
             metrics = {}
+
+            # compute tcm
+            for key, loaderSets in loaders.items():
+                loader = loaderSets[sets]
+
+                metric = "tcm"
+                mkey = f"{metric}_{key}"
+                print_logs(metric, key)
+                metrics[mkey] = temporal_consistency_metric(loader)
+
             for key, loaderSets in loaders.items():
                 loader = loaderSets[sets]
 

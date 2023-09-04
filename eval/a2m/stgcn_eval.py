@@ -13,6 +13,7 @@ from data_loaders.tensors import collate
 from .tools import format_metrics
 import utils.rotation_conversions as geometry
 from utils import dist_util
+from utils.parser_util import get_cond_mode
 
 
 def convert_x_to_rot6d(x, pose_rep):
@@ -122,7 +123,7 @@ def evaluate(args, model, diffusion, data):
                         for key in data_types}
 
         new_data_loader = functools.partial(NewDataloader, model=model, diffusion=diffusion, device=device,
-                                            cond_mode=args.cond_mode, dataset=args.dataset, num_samples=args.num_samples)
+                                            cond_mode=get_cond_mode(args), dataset=args.dataset, num_samples=args.num_samples)
         gtLoaders = {key: new_data_loader(mode="gt", dataiterator=dataiterator[key][0])
                      for key in ["train", "test"]}
 
