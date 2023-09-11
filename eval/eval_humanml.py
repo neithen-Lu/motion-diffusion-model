@@ -127,6 +127,21 @@ def evaluate_multimodality(eval_wrapper, mm_motion_loaders, file, mm_num_times):
         eval_dict[model_name] = multimodality
     return eval_dict
 
+def temporal_consistency_metric(motion_loaders):
+    eval_dict = OrderedDict({})
+    for motion_loader_name, motion_loader in motion_loaders.items():
+        tcm = 0
+        with torch.no_grad():
+            for idx, batch in enumerate(motion_loader):
+                _, _, _, _, motions, _, _ = batch
+                data = motions.permute((0,2,1))
+                diff = data[:,:,1:] - data[:,:,:-1]
+                a = torch.norm(diff, p=2, dim=(1))
+                tcm += torch.mean(a)
+            tcm = tcm / len(motion_loader)
+        eval_dict[motion_loader_name] = tcm
+    return eval_dict
+
 
 def get_metric_statistics(values, replication_times):
     mean = np.mean(values, axis=0)
@@ -138,6 +153,7 @@ def get_metric_statistics(values, replication_times):
 def evaluation(eval_wrapper, gt_loader, eval_motion_loaders, log_file, replication_times, diversity_times, mm_num_times, run_mm=False):
     with open(log_file, 'w') as f:
         all_metrics = OrderedDict({'Matching Score': OrderedDict({}),
+                                   'TCM': OrderedDict({}),
                                    'R_precision': OrderedDict({}),
                                    'FID': OrderedDict({}),
                                    'Diversity': OrderedDict({}),
@@ -165,6 +181,10 @@ def evaluation(eval_wrapper, gt_loader, eval_motion_loaders, log_file, replicati
             print(f'Time: {datetime.now()}', file=f, flush=True)
             div_score_dict = evaluate_diversity(acti_dict, f, diversity_times)
 
+            print(f'Time: {datetime.now()}')
+            print(f'Time: {datetime.now()}', file=f, flush=True)
+            tcm_dict = temporal_consistency_metric(motion_loaders)
+
             if run_mm:
                 print(f'Time: {datetime.now()}')
                 print(f'Time: {datetime.now()}', file=f, flush=True)
@@ -178,6 +198,12 @@ def evaluation(eval_wrapper, gt_loader, eval_motion_loaders, log_file, replicati
                     all_metrics['Matching Score'][key] = [item]
                 else:
                     all_metrics['Matching Score'][key] += [item]
+
+            for key, item in tcm_dict.items():
+                if key not in all_metrics['TCM']:
+                    all_metrics['TCM'][key] = [item]
+                else:
+                    all_metrics['TCM'][key] += [item]
 
             for key, item in R_precision_dict.items():
                 if key not in all_metrics['R_precision']:
@@ -242,7 +268,7 @@ if __name__ == '__main__':
 
     print(f'Eval mode [{args.eval_mode}]')
     if args.eval_mode == 'debug':
-        num_samples_limit = 1000  # None means no limit (eval over all dataset)
+        num_samples_limit = 500  # None means no limit (eval over all dataset)
         run_mm = False
         mm_num_samples = 0
         mm_num_repeats = 0
