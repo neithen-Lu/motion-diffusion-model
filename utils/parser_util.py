@@ -38,7 +38,7 @@ def parse_and_load_from_model(parser):
 
     if args.dataset in ['humanact12','uestc']:
         args.num_frames = 60
-    if args.dataset == 'humanml':
+    if args.dataset in ['humanml','kit']:
         args.num_frames = 196
     return args
 

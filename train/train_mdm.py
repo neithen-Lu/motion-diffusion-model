@@ -20,7 +20,7 @@ def main():
     torch.set_num_threads(10)
     args = train_args()
     fixseed(args.seed)
-    if args.dataset == 'humanml':
+    if args.dataset in ['humanml','kit']:
         args.num_frames = 196
     train_platform_type = eval(args.train_platform_type)
     train_platform = train_platform_type(args.save_dir)
