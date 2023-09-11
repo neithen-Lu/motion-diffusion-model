@@ -268,7 +268,7 @@ if __name__ == '__main__':
 
     print(f'Eval mode [{args.eval_mode}]')
     if args.eval_mode == 'debug':
-        num_samples_limit = 500  # None means no limit (eval over all dataset)
+        num_samples_limit = 1000  # None means no limit (eval over all dataset)
         run_mm = False
         mm_num_samples = 0
         mm_num_repeats = 0

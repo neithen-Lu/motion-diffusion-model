@@ -1,4 +1,4 @@
-name: mdm
+name: kxmdm
 channels:
   - pytorch
   - anaconda
