@@ -204,6 +204,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                         noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x_start.shape[:3])
                     else:
                         noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x_start.shape[:3])
+                noise = noise.to(x_start.device)
             else:
                 noise = torch.cat([self.sampler.sample(x_start.shape[:3]) for i in range(self.window_num)],axis=-1).to(x_start.device)
         assert noise.shape == x_start.shape
@@ -256,6 +257,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                     noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                 else:
                     noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+            noise = noise.to(x.device)
         else:
             noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
         # print('const_noise', const_noise)
@@ -319,6 +321,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                         noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                     else:
                         noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+                noise = noise.to(x_start.device)
             else:
                 noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
             nonzero_mask = (
@@ -435,6 +438,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                         img[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
                     else:
                         img[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
+                img = img.to(device)
             else:
                 img = torch.cat([self.sampler.sample(shape[:3]) for i in range(self.window_num)],axis=-1).to(device)
 
@@ -522,6 +526,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                     noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                 else:
                     noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+            noise = noise.to(x.device)
         else:
             noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
         mean_pred = (
@@ -587,6 +592,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                     noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(x.shape[:3])
                 else:
                     noise[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * noise[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(x.shape[:3])
+            noise = noise.to(x.device)
         else:
             noise = torch.cat([self.sampler.sample(x.shape[:3]) for i in range(self.window_num)],axis=-1).to(x.device)
         mean_pred = (
@@ -722,6 +728,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                         img[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
                     else:
                         img[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
+                img = img.to(device)
             else:
                 img = torch.cat([self.sampler.sample(shape[:3]) for i in range(self.window_num)],axis=-1).to(device)
 
@@ -923,6 +930,7 @@ class DependentGaussianDiffusion(GaussianDiffusion):
                         img[:,:,:,i*self.window_size:(i+1)*self.window_size] = self.sampler.sample(shape[:3])
                     else:
                         img[:,:,:,i*self.window_size:(i+1)*self.window_size] = math.sqrt(self.ar_coeff) * img[:,:,:,(i-1)*self.window_size:i*self.window_size] + math.sqrt(1-self.ar_coeff)  * self.sampler.sample(shape[:3])
+                img = img.to(device)
             else:
                 img = torch.cat([self.sampler.sample(shape[:3]) for i in range(self.window_num)],axis=-1).to(device)
 
